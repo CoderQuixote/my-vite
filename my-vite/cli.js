@@ -72,17 +72,24 @@ app.use(async(ctx, next) => {
         const _path = path.join(fileDir, ctx.path);
         const { descriptor } = compilerSFC.parse(fs.readFileSync(_path, 'utf-8'));
         let code = '';
-        if (ctx.query.type === 'template') {
+        if (ctx.query.type === 'script') {
+            code = descriptor.script.content;
+        } else {
             const render = compilerSFC.compileTemplate({
                 source: descriptor.template.content
             })
             code = render.code;
-        } else {
-            code = descriptor.script.content.replace('export default', 'const __script=');
-            code += `
-                import {render as __render} from "${ctx.path}?type=template"
-                __script.render=  __render;
-                export default __script;
+            // code = descriptor.script.content.replace('export default', 'const __script=');
+            // console.log('descriptor.styles', descriptor.styles);
+            // if (descriptor.styles.length > 0) {
+
+            // }
+            code = `
+                import _sfc_main from "${ctx.path}?vue&type=script"
+                export * from "${ctx.path}?vue&type=script"
+                ${code}
+                _sfc_main.render= render;
+                export default _sfc_main;
             `
         }
         ctx.type = "application/javascript";
