@@ -4,7 +4,7 @@
 npm i
 //创建链接
 npm link
-//vue-app为vue3.0联系代码
+//vue-app为vue3.0练习代码
 //安装依赖
 npm i
 //链接本地依赖
