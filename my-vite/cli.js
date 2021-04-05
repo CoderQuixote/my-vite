@@ -5,6 +5,10 @@
  * @Date: 2021-04-04 17:33:25 
  */
 console.log('my-vite');
+//watch files change module
+const chokidar = require('chokidar');
+const http2 = require('http2');
+const WebSocket = require('ws');
 const koa = require('koa');
 // const send = require('koa-send');
 const path = require('path');
@@ -50,8 +54,12 @@ app.use(async(ctx, next) => {
     if (ctx.path === '/') {
         const _path = path.join(fileDir, 'index.html');
         let indexContent = fs.readFileSync(_path, 'utf-8');
+        const clientCode = fs.readFileSync(path.join(__dirname, './client.js'));
         indexContent += `<script>
-                process = {
+                ${clientCode}
+            </script>
+            <script>
+                process= {
                     env: {
                         NODE_ENV: 'development'
                     }
@@ -120,6 +128,33 @@ app.use(async(ctx, next) => {
     }
     await next();
 })
+const cert = fs.readFileSync(path.join(__dirname, './cert.pem'));
+const webServer = http2.createSecureServer({ cert, key: cert, allowHTTP1: true }, app.callback());
+const wss = new WebSocket.Server({ noServer: true });
+wss.emit('connection', { data: '111' });
+webServer.on('upgrade', (req, socket, head) => {
+    console.log('upgrade enter', req);
+    wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req)
+    })
+})
+wss.on('connection', (socket) => {
+    socket.send(JSON.stringify({ type: 'connected' }))
 
-app.listen(3000);
-console.log('server running @ http://localhost:3000')
+})
+
+wss.on('error', (e) => {
+    console.log('wss error', e);
+})
+const watcher = chokidar.watch(fileDir, {
+    ignored: ['**/node_modules/**', '**/.git/**'],
+    ignoreInitial: true,
+    ignorePermissionErrors: true,
+    disableGlobbing: true
+})
+watcher.on('change', async(file) => {
+    wss.socket.send('file change');
+})
+webServer.listen(3000);
+
+console.log('server running @ https://localhost:3000')
