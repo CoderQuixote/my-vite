@@ -5,10 +5,6 @@
  * @Date: 2021-04-04 17:33:25 
  */
 console.log('my-vite');
-//watch files change module
-const chokidar = require('chokidar');
-const http2 = require('http2');
-const WebSocket = require('ws');
 const koa = require('koa');
 // const send = require('koa-send');
 const path = require('path');
@@ -17,30 +13,43 @@ const fs = require('fs');
 //compilerSFC.parse获取代码字符串 
 //compilerSFC.compileTemplate生成render函数
 const compilerSFC = require('@vue/compiler-sfc');
+const createServer = require('./server');
+
 const app = new koa();
 //Node.js 进程的当前工作目录。
 const fileDir = process.cwd();
-
+let descriptorId = 1111;
 //执行esmodule规范，将不是./或者../或者/开头的目录转换为/@modules+之前的路径
 function rewriteImport(content) {
     return content.replace(/ from ['"](.*)['"]/g, function(s1, s2) {
         if (s2.startsWith(".") || s2.startsWith("/")) {
             return s1;
         } else {
-            return ` from '/@modules/${s2}'`;
+            const modulePkg = require(path.join(fileDir, 'node_modules', s2, 'package.json'));
+            let truePath = path.join('./node_modules', s2, modulePkg.module);
+            //let truePath= path.join('./node_modules', '.vite', `${s2}.js`);
+            truePath = truePath.replace(/\\/g, '/');
+            return ` from '/${truePath}'`;
         }
     })
 }
 
 //将/@modules开头的请求路径，在node_modules中找到其加载的真实路径，替换ctx.path
 app.use(async(ctx, next) => {
-    if (ctx.path.startsWith('/@modules')) {
-        const moduleName = ctx.path.replace('/@modules', '');
-        const modulePkg = require(path.join(fileDir, 'node_modules', moduleName, 'package.json'));
-        ctx.path = path.join('./node_modules', moduleName, modulePkg.module);
+    // if (ctx.path.startsWith('/@modules')) {
+    //     const moduleName = ctx.path.replace('/@modules', '');
+    //     const modulePkg = require(path.join(fileDir, 'node_modules', moduleName, 'package.json'));
+    //     ctx.path = path.join('./node_modules', moduleName, modulePkg.module);
+    // }else 
+    if (ctx.path.startsWith('/@vite')) {
+        const moduleName = ctx.path.replace('/@vite', '');
+        const clientCode = fs.readFileSync(path.join(__dirname, `${moduleName}.js`));
+        ctx.type = "application/javascript";
+        ctx.body = clientCode;
     }
     await next();
 })
+
 
 //加载首页文件index.html
 app.use(async(ctx, next) => {
@@ -54,10 +63,7 @@ app.use(async(ctx, next) => {
     if (ctx.path === '/') {
         const _path = path.join(fileDir, 'index.html');
         let indexContent = fs.readFileSync(_path, 'utf-8');
-        const clientCode = fs.readFileSync(path.join(__dirname, './client.js'));
-        indexContent += `<script>
-                ${clientCode}
-            </script>
+        indexContent += `<script type="module" src="/@vite/client"></script>
             <script>
                 process= {
                     env: {
@@ -71,33 +77,52 @@ app.use(async(ctx, next) => {
     await next();
 })
 
+
 //解析.vue文件
 //1)将script里面的内容修改后直接返回
 //2)修改的内容添加import {render as __render} from "${ctx.path}?type=template"
 //3)处理当ctx.query.type === 'template'时将template内容通过@vue/compiler-sfc模块的compileTemplate方法生成render函数并返回code
 app.use(async(ctx, next) => {
-    if (ctx.path.endsWith('.vue')) {
-        const _path = path.join(fileDir, ctx.path);
-        const { descriptor } = compilerSFC.parse(fs.readFileSync(_path, 'utf-8'));
-        let code = '';
-        if (ctx.query.type === 'script') {
-            code = descriptor.script.content;
-        } else {
-            const render = compilerSFC.compileTemplate({
-                source: descriptor.template.content
-            })
-            code = render.code;
-            // code = descriptor.script.content.replace('export default', 'const __script=');
-            // console.log('descriptor.styles', descriptor.styles);
-            // if (descriptor.styles.length > 0) {
+            if (ctx.path.endsWith('.vue')) {
+                const _path = path.join(fileDir, ctx.path);
+                const { descriptor } = compilerSFC.parse(fs.readFileSync(_path, 'utf-8'), {
+                    filename: _path,
+                    sourceMap: true
+                });
+                let code = '';
+                if (ctx.query.type === 'script') {
+                    code = descriptor.script.content;
+                } else {
+                    descriptor.id = require('./hash')(ctx.path);
+                    const render = compilerSFC.compileTemplate({
+                        source: descriptor.template.content
+                    })
+                    code = render.code;
+                    // code = descriptor.script.content.replace('export default', 'const __script=');
+                    // console.log('descriptor.styles', descriptor.styles);
+                    // if (descriptor.styles.length > 0) {
 
-            // }
-            code = `
-                import _sfc_main from "${ctx.path}?vue&type=script"
+                    // }
+                    code = `
+                import { createHotContext as __vite__createHotContext } from "/@vite/client";
+                import.meta.hot = __vite__createHotContext("${ctx.path}")
+                import _sfc_main from "${ctx.path}?vue&type=script${ctx.query.t? `&t=${ctx.query.t}`: ''}"
                 export * from "${ctx.path}?vue&type=script"
                 ${code}
                 _sfc_main.render= render;
+                _sfc_main.__scopeId= ${JSON.stringify(`data-v-${descriptor.id}`)}
+                _sfc_main.__file = ${JSON.stringify(`${_path.replace(/\\/g, '/')}`)}
                 export default _sfc_main;
+                _sfc_main.__hmrId = ${JSON.stringify(descriptor.id)}
+                typeof __VUE_HMR_RUNTIME__ !== 'undefined' && __VUE_HMR_RUNTIME__.createRecord(_sfc_main.__hmrId, _sfc_main)
+                import.meta.hot.accept(({ default: updated, _rerender_only }) => {
+                    console.log('render enter', updated, ${ctx.query.t});
+                    if (_rerender_only) {
+                         __VUE_HMR_RUNTIME__.rerender(updated.__hmrId, updated.render)
+                    } else {
+                        __VUE_HMR_RUNTIME__.reload(updated.__hmrId, updated)
+                    }
+                })
             `
         }
         ctx.type = "application/javascript";
@@ -117,7 +142,7 @@ app.use(async(ctx, next) => {
 
 //当文件中的文件导入方式不符合esmodule规范时，调用rewriteImport修改请求路径
 app.use(async(ctx, next) => {
-    if (ctx.type === "application/javascript") {
+    if (!ctx.path.startsWith('/@vite') && ctx.type === "application/javascript") {
         if (ctx.path.endsWith('.vue')) {
             ctx.body = rewriteImport(ctx.body);
         } else {
@@ -128,33 +153,8 @@ app.use(async(ctx, next) => {
     }
     await next();
 })
-const cert = fs.readFileSync(path.join(__dirname, './cert.pem'));
-const webServer = http2.createSecureServer({ cert, key: cert, allowHTTP1: true }, app.callback());
-const wss = new WebSocket.Server({ noServer: true });
-wss.emit('connection', { data: '111' });
-webServer.on('upgrade', (req, socket, head) => {
-    console.log('upgrade enter', req);
-    wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req)
-    })
-})
-wss.on('connection', (socket) => {
-    socket.send(JSON.stringify({ type: 'connected' }))
 
-})
-
-wss.on('error', (e) => {
-    console.log('wss error', e);
-})
-const watcher = chokidar.watch(fileDir, {
-    ignored: ['**/node_modules/**', '**/.git/**'],
-    ignoreInitial: true,
-    ignorePermissionErrors: true,
-    disableGlobbing: true
-})
-watcher.on('change', async(file) => {
-    wss.socket.send('file change');
-})
+const webServer= createServer(app);
 webServer.listen(3000);
 
 console.log('server running @ https://localhost:3000')
