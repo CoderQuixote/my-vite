@@ -47,17 +47,12 @@ async function handleMessage(payload) {
 async function fetchUpdate({ path, acceptedPath, timestamp }) {
     const mod = hotModulesMap.get(path);
     if (!mod) {
-        // In a code-splitting project,
-        // it is common that the hot-updating module is not loaded yet.
-        // https://github.com/vitejs/vite/issues/721
         return;
     }
     const moduleMap = new Map();
     const isSelfUpdate = path === acceptedPath;
-    // make sure we only import each dep once
     const modulesToUpdate = new Set();
     if (isSelfUpdate) {
-        // self update - only update self
         modulesToUpdate.add(path);
     } else {
         // dep update
@@ -70,7 +65,6 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
             });
         }
     }
-    // determine the qualified callbacks before we re-import the modules
     const qualifiedCallbacks = mod.callbacks.filter(({ deps }) => {
         return deps.some((dep) => modulesToUpdate.has(dep));
     });
@@ -117,13 +111,10 @@ const createHotContext = (ownerPath) => {
     if (!dataMap.has(ownerPath)) {
         dataMap.set(ownerPath, {});
     }
-    // when a file is hot updated, a new context is created
-    // clear its stale callbacks
     const mod = hotModulesMap.get(ownerPath);
     if (mod) {
         mod.callbacks = [];
     }
-    // clear stale custom event listeners
     const staleListeners = ctxToListenersMap.get(ownerPath);
     if (staleListeners) {
         for (const [event, staleFns] of staleListeners) {
@@ -152,11 +143,9 @@ const createHotContext = (ownerPath) => {
         },
         accept(deps, callback) {
             if (typeof deps === 'function' || !deps) {
-                // self-accept: hot.accept(() => {})
                 acceptDeps([ownerPath], ([mod]) => deps && deps(mod));
             }
             else if (typeof deps === 'string') {
-                // explicit deps
                 acceptDeps([deps], ([mod]) => callback && callback(mod));
             }
             else if (Array.isArray(deps)) {
@@ -176,14 +165,10 @@ const createHotContext = (ownerPath) => {
         prune(cb) {
             pruneMap.set(ownerPath, cb);
         },
-        // TODO
         decline() { },
         invalidate() {
-            // TODO should tell the server to re-perform hmr propagation
-            // from this module as root
             location.reload();
         },
-        // custom events
         on(event, cb) {
             const addToMap = (map) => {
                 const existing = map.get(event) || [];
