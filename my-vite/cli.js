@@ -18,7 +18,6 @@ const createServer = require('./server');
 const app = new koa();
 //Node.js 进程的当前工作目录。
 const fileDir = process.cwd();
-let descriptorId = 1111;
 //执行esmodule规范，将不是./或者../或者/开头的目录转换为/@modules+之前的路径
 function rewriteImport(content) {
     return content.replace(/ from ['"](.*)['"]/g, function(s1, s2) {
