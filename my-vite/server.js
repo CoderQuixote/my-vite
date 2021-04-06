@@ -2,7 +2,7 @@
  * @Descripttion: 创建服务，监听本地文件变化，本地node服务和客户端进行通讯
  * @version 1.0.0
  * @Author: cfwang 
- * @Date: 2021-04-06 10:01:25 
+ * @Date: 2021-04-06 21:45:25 
  */
 //watch files change module
 const chokidar = require('chokidar');

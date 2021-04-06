@@ -2,7 +2,7 @@
  * @Descripttion: websocket client用于本地node服务和网页进行通讯
  * @version 1.0.0
  * @Author: cfwang 
- * @Date: 2021-04-06 10:01:25 
+ * @Date: 2021-04-05 22:15:25 
  */
 const isFirstUpdate = true;
 const base = "/" || '/';

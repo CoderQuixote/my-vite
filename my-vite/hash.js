@@ -2,7 +2,7 @@
  * @Descripttion: websocket client用于本地node服务和网页进行通讯
  * @version 1.0.0
  * @Author: cfwang 
- * @Date: 2021-04-06 10:20:25 
+ * @Date: 2021-04-05 20:20:25 
  */
 function pad(hash2, len) {
     while (hash2.length < len) {
