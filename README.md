@@ -5,7 +5,7 @@
 ```
 cd my-vite
 npm i
-//在本地nodejs安装目录下的node_modules生成my-vite的链接
+//在本地nodejs安装目录下的node_modules生成my-vite的链接，相当于npm install my-vite -g
 npm link
 
 cd ../vue-app
