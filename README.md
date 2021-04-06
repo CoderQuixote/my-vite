@@ -1,6 +1,6 @@
 # 目录介绍
-* my-vite为手写vite代码
-* vue-app为vue3.0练习代码
+* my-vite为自写vite代码
+* vue-app为vue3.0
 # 项目运行
 ```
 cd my-vite
