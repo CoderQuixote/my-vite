@@ -29,7 +29,6 @@ async function handleMessage(payload) {
             // }else {
             //     isFirstUpdate = false;
             // }
-            console.log('update11', payload.updates);
             // [{
             //     acceptedPath: "/src/App.vue",
             //     path: "/src/App.vue",
@@ -93,7 +92,6 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
                             base +
                             path.slice(1) +
                             `?import&t=${timestamp}${query ? `&${query}` : ''}`);
-            console.log('newMod0000000', newMod);
             moduleMap.set(dep, newMod);
         }
         catch (e) {
@@ -111,7 +109,6 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
             let depsPararm= deps.map((dep) => {
                 return  moduleMap.get(dep)
             })
-            console.log('1111111', depsPararm);
             //depsPararm [newMod]
             fn(depsPararm);
         }
@@ -164,7 +161,6 @@ const createHotContext = (ownerPath) => {
         //     }
         // }
         accept(deps, callback) {
-            console.log('accept ennter deps', deps, ownerPath);
             if (typeof deps === 'function' || !deps) {
                 acceptDeps([ownerPath], ([mod]) => deps && deps(mod));
             }
