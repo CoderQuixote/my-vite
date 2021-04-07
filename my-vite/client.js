@@ -4,14 +4,9 @@
  * @Author: cfwang 
  * @Date: 2021-04-05 22:15:25 
  */
-const isFirstUpdate = true;
+let isFirstUpdate = true;
 const base = "/" || '/';
 const hotModulesMap = new Map();
-const disposeMap = new Map();
-const pruneMap = new Map();
-const dataMap = new Map();
-const ctxToListenersMap = new Map();
-const customListenersMap = new Map();
 let pending = false;
 let queued = [];
 
@@ -24,6 +19,7 @@ socket.addEventListener('message', async({ data }) => {
 async function handleMessage(payload) {
     switch (payload.type) {
         case 'connected':
+            console.log('client ws connected');
             setInterval(() => socket.send('ping'), 30000);
             break;
         case 'update':
@@ -33,7 +29,13 @@ async function handleMessage(payload) {
             // }else {
             //     isFirstUpdate = false;
             // }
-            console.log('handleMessage update enter', payload.updates);
+            console.log('update11', payload.updates);
+            // [{
+            //     acceptedPath: "/src/App.vue",
+            //     path: "/src/App.vue",
+            //     timestamp: 1617763173350,
+            //     type: "js-update"
+            // }]
             payload.updates.forEach((update) => {
                 if (update.type === 'js-update') {
                     queueUpdate(fetchUpdate(update));
@@ -45,6 +47,7 @@ async function handleMessage(payload) {
 
 
 async function fetchUpdate({ path, acceptedPath, timestamp }) {
+    //hotModulesMap里面查找页面注入createHotContext之后通过import.meta.hot.accept收集的路径和render函数信息
     const mod = hotModulesMap.get(path);
     if (!mod) {
         return;
@@ -55,7 +58,6 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
     if (isSelfUpdate) {
         modulesToUpdate.add(path);
     } else {
-        // dep update
         for (const { deps }
             of mod.callbacks) {
             deps.forEach((dep) => {
@@ -65,21 +67,33 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
             });
         }
     }
+
+    //在mod.callbacks中查找需要本次更新调用的callback
+    // callbacks: [{
+    //     deps: ['/src/App.vue'],
+    //     fn: ([mod])=> cli注入render函数(mod)
+    // }]
     const qualifiedCallbacks = mod.callbacks.filter(({ deps }) => {
         return deps.some((dep) => modulesToUpdate.has(dep));
     });
+
+    //modulesToUpdate  ['/src/App.vue']
+    //解析modulesToUpdate，链接上面添加时间戳重新发起模块请求获取到的newMod 存储在moduleMap里面
     await Promise.all(Array.from(modulesToUpdate).map(async(dep) => {
-                    const disposer = disposeMap.get(dep);
-                    if (disposer)
-                        await disposer(dataMap.get(dep));
                     const [path, query] = dep.split(`?`);
                     try {
+                        //newMod
+                        // {
+                        //     default: {...},
+                        //     render: ()=>{...}
+                        // }
                         const newMod = await
                         import (
                             /* @vite-ignore */
                             base +
                             path.slice(1) +
                             `?import&t=${timestamp}${query ? `&${query}` : ''}`);
+            console.log('newMod0000000', newMod);
             moduleMap.set(dep, newMod);
         }
         catch (e) {
@@ -87,11 +101,22 @@ async function fetchUpdate({ path, acceptedPath, timestamp }) {
         }
     }));
     return () => {
+        //qualifiedCallbacks
+        //[{
+        //     deps: ['/src/App.vue'],
+        //     fn: ([mod])=> cli注入render函数(mod)
+        // }]   
         for (const { deps, fn } of qualifiedCallbacks) {
-            fn(deps.map((dep) => moduleMap.get(dep)));
+             // fn(deps.map((dep) => moduleMap.get(dep)));
+            let depsPararm= deps.map((dep) => {
+                return  moduleMap.get(dep)
+            })
+            console.log('1111111', depsPararm);
+            //depsPararm [newMod]
+            fn(depsPararm);
         }
-        const loggedPath = isSelfUpdate ? path : `${acceptedPath} via ${path}`;
-        console.log(`hot updated: ${loggedPath}`);
+        // const loggedPath = isSelfUpdate ? path : `${acceptedPath} via ${path}`;
+        console.log(`[vite] hot updated: ${path}`);
     };
 }
 
@@ -103,29 +128,18 @@ async function queueUpdate(p) {
         pending = false;
         const loading = [...queued];
         queued = [];
+        console.log('queueUpdate called');
         (await Promise.all(loading)).forEach((fn) => fn && fn());
     }
 }
 
+//创建热更新的上下文环境
 const createHotContext = (ownerPath) => {
-    if (!dataMap.has(ownerPath)) {
-        dataMap.set(ownerPath, {});
-    }
     const mod = hotModulesMap.get(ownerPath);
+    //当已经存在render回调时，证明之前已经加载过一次这个模块,设置回调为空
     if (mod) {
         mod.callbacks = [];
     }
-    const staleListeners = ctxToListenersMap.get(ownerPath);
-    if (staleListeners) {
-        for (const [event, staleFns] of staleListeners) {
-            const listeners = customListenersMap.get(event);
-            if (listeners) {
-                customListenersMap.set(event, listeners.filter((l) => !staleFns.includes(l)));
-            }
-        }
-    }
-    const newListeners = new Map();
-    ctxToListenersMap.set(ownerPath, newListeners);
     function acceptDeps(deps, callback = () => { }) {
         const mod = hotModulesMap.get(ownerPath) || {
             id: ownerPath,
@@ -138,45 +152,22 @@ const createHotContext = (ownerPath) => {
         hotModulesMap.set(ownerPath, mod);
     }
     const hot = {
-        get data() {
-            return dataMap.get(ownerPath);
-        },
+        //创建了热更新上下文环境之后，在hotModulesMap中存储
+        // {
+        //     key: '/src/App.vue',
+        //     value: {
+        //         id: '/src/App.vue',
+        //         callbacks: [{
+        //              deps: ['/src/App.vue'],
+        //              fn: ([mod])=> cli注入render函数(mod)
+        //          }]
+        //     }
+        // }
         accept(deps, callback) {
+            console.log('accept ennter deps', deps, ownerPath);
             if (typeof deps === 'function' || !deps) {
                 acceptDeps([ownerPath], ([mod]) => deps && deps(mod));
             }
-            else if (typeof deps === 'string') {
-                acceptDeps([deps], ([mod]) => callback && callback(mod));
-            }
-            else if (Array.isArray(deps)) {
-                acceptDeps(deps, callback);
-            }
-            else {
-                throw new Error(`invalid hot.accept() usage.`);
-            }
-        },
-        acceptDeps() {
-            throw new Error(`hot.acceptDeps() is deprecated. ` +
-                `Use hot.accept() with the same signature instead.`);
-        },
-        dispose(cb) {
-            disposeMap.set(ownerPath, cb);
-        },
-        prune(cb) {
-            pruneMap.set(ownerPath, cb);
-        },
-        decline() { },
-        invalidate() {
-            location.reload();
-        },
-        on(event, cb) {
-            const addToMap = (map) => {
-                const existing = map.get(event) || [];
-                existing.push(cb);
-                map.set(event, existing);
-            };
-            addToMap(customListenersMap);
-            addToMap(newListeners);
         }
     };
     return hot;

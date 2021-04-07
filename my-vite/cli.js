@@ -18,7 +18,6 @@ const createServer = require('./server');
 const app = new koa();
 //Node.js 进程的当前工作目录。
 const fileDir = process.cwd();
-let descriptorId = 1111;
 //执行esmodule规范，将不是./或者../或者/开头的目录转换为/@modules+之前的路径
 function rewriteImport(content) {
     return content.replace(/ from ['"](.*)['"]/g, function(s1, s2) {
@@ -79,9 +78,12 @@ app.use(async(ctx, next) => {
 
 
 //解析.vue文件
-//1)将script里面的内容修改后直接返回
-//2)修改的内容添加import {render as __render} from "${ctx.path}?type=template"
-//3)处理当ctx.query.type === 'template'时将template内容通过@vue/compiler-sfc模块的compileTemplate方法生成render函数并返回code
+//1)通过compilerSFC.parse获取.vue文件代码,通过路径生成hashid挂载在descriptor上面,用于后面的热更新
+//2)通过compilerSFC.compileTemplate传入模版代码生成render函数
+//3)拼接import _sfc_main from "${ctx.path}?vue&type=script";获取script代码对象，将上面生成的render函数挂载上去
+//4)拼接热更新相关代码，收集热更新依赖信息
+//5)当query.type === 'script'直接返回descriptor.script.content
+//6)注：__VUE_HMR_RUNTIME__ 源码在@vue/runtime-core/dist/runtime-core.esm-bundler.js 428是vue框架在开发环境下挂载的全局API
 app.use(async(ctx, next) => {
             if (ctx.path.endsWith('.vue')) {
                 const _path = path.join(fileDir, ctx.path);
@@ -105,22 +107,22 @@ app.use(async(ctx, next) => {
                     // }
                     code = `
                 import { createHotContext as __vite__createHotContext } from "/@vite/client";
-                import.meta.hot = __vite__createHotContext("${ctx.path}")
-                import _sfc_main from "${ctx.path}?vue&type=script${ctx.query.t? `&t=${ctx.query.t}`: ''}"
-                export * from "${ctx.path}?vue&type=script"
+                import.meta.hot = __vite__createHotContext("${ctx.path}");
+                import _sfc_main from "${ctx.path}?vue&type=script";//${ctx.query.t? `&t=${ctx.query.t}`: ''}
+                export * from "${ctx.path}?vue&type=script";
                 ${code}
                 _sfc_main.render= render;
-                _sfc_main.__scopeId= ${JSON.stringify(`data-v-${descriptor.id}`)}
-                _sfc_main.__file = ${JSON.stringify(`${_path.replace(/\\/g, '/')}`)}
+                _sfc_main.__scopeId= ${JSON.stringify(`data-v-${descriptor.id}`)};
+                _sfc_main.__file = ${JSON.stringify(`${_path.replace(/\\/g, '/')}`)};
                 export default _sfc_main;
-                _sfc_main.__hmrId = ${JSON.stringify(descriptor.id)}
-                typeof __VUE_HMR_RUNTIME__ !== 'undefined' && __VUE_HMR_RUNTIME__.createRecord(_sfc_main.__hmrId, _sfc_main)
+                _sfc_main.__hmrId = ${JSON.stringify(descriptor.id)};
+                typeof __VUE_HMR_RUNTIME__ !== 'undefined' && __VUE_HMR_RUNTIME__.createRecord(_sfc_main.__hmrId, _sfc_main);
                 import.meta.hot.accept(({ default: updated, _rerender_only }) => {
                     console.log('render enter', updated, ${ctx.query.t});
                     if (_rerender_only) {
-                         __VUE_HMR_RUNTIME__.rerender(updated.__hmrId, updated.render)
+                         __VUE_HMR_RUNTIME__.rerender(updated.__hmrId, updated.render);
                     } else {
-                        __VUE_HMR_RUNTIME__.reload(updated.__hmrId, updated)
+                        __VUE_HMR_RUNTIME__.reload(updated.__hmrId, updated);
                     }
                 })
             `
