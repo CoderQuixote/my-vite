@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 /*
  * @Descripttion: my vite
  * @version 1.0.0

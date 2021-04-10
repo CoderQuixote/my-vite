@@ -2,7 +2,7 @@
     "name": "my-vite",
     "version": "1.0.0",
     "description": "",
-    "main": "index.js",
+    "main": "cli.js",
     "bin": "cli.js",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1"
