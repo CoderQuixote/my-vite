@@ -11,3 +11,4 @@ yarn dev
 sass-binary-site "http://npm.taobao.org/mirrors/node-sass"
 strict-ssl false
 ```
+下载依赖失败时可以直接解压node_modules.zip
