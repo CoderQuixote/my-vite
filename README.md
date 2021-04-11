@@ -12,4 +12,5 @@ sass-binary-site "http://npm.taobao.org/mirrors/node-sass"
 strict-ssl false
 ```
 **下载依赖失败时可以直接解压node_modules.zip**
+---
 **packages/vue-app/package.json 配置下的scripts.dev 为vite或者my-vite切换使用官方的vite还是我们自己写的vite**
