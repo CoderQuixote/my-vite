@@ -33,13 +33,6 @@ export default defineComponent({
         state.value.gf.b= 666;
         state.value.gf.f.c= 666;
         state.value.gf.f.s.d= 666;
-
-
-
-
-
-
-
         
         //对于 shallow 过的 ref 对象，我们还可以手动去触发 ref 的变化监听事件来实现界面的改变。使用的 api 是 triggerRef
         // triggerRef(state);

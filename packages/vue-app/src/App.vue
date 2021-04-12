@@ -8,9 +8,10 @@
   <!-- <shallowRefTest/> -->
   <!-- <shallowReactiveTest/> -->
   <!-- <toRawTest/> -->
+  <markRawTest/>
   <!-- <toRefTest/> -->
   <!-- <toRefsTest/> -->
-  <watchEffectTest/>
+  <!-- <watchEffectTest/> -->
 </template>
 
 <script>
@@ -23,6 +24,7 @@ import diffRefReactive from './components/diffRefReactive.vue';
 import shallowRefTest from './components/shallowRef-test.vue';
 import shallowReactiveTest from './components/shallowReactive-test.vue';
 import toRawTest from './components/toRaw-test.vue';
+import markRawTest from './components/markRaw-test.vue';
 import toRefTest from './components/toRef-test.vue';
 import toRefsTest from './components/toRefs-test.vue';
 import watchEffectTest from './components/watchEffect-test.vue';
@@ -39,6 +41,7 @@ export default {
     shallowRefTest,
     shallowReactiveTest,
     toRawTest,
+    markRawTest,
     toRefTest,
     toRefsTest,
     watchEffectTest

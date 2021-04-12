@@ -16,6 +16,8 @@ export default defineComponent({
   setup(){
     //1，ref(param) === reactive({value: param})
     //2，ref和reactive都为递归监听
+
+    //3，如果在template自动使用ref数据的时候，会自动添加value属性
     //递归监听
     let refData= ref({
         gf: {
