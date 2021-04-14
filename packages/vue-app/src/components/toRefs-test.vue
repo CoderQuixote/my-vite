@@ -1,8 +1,8 @@
 <template>
     <div class="page-wrapper">
         <p>-------------------------------toRefs--------------------------</p>
-        <p>name: {{name}}</p>
-        <p>age: {{age}}</p>
+        <p>name: {{refsStu.name.value}}</p>
+        <p>age: {{refsStu.age.value}}</p>
         <button @click="ageChange">click一下,age++</button>
     </div>
 </template>
@@ -16,22 +16,19 @@ export default defineComponent({
         age: 18
     });
     //响应式拆解
-    // let {name, age}= toRefs(stu);
-    let {name, age}= stu;
-    console.log(reactive({
-        a: 1,
-        b: null
-    }))
+    let refsStu= toRefs(stu);
+    // let {name, age}= stu;
     function ageChange() {
-        // age.value++;
-        age++;
-        console.log('stu', stu.age)
+        refsStu.age.value++;
+        // age++;
+        console.log('stu.age', stu.age)
         // console.log('age', age.value)
-        console.log('age', age)
+        // console.log('age', age)
     }
     return {
-        name,
-        age,
+        refsStu,
+        // name,
+        // age,
         ageChange
     }
   }

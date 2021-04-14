@@ -8,7 +8,7 @@
   </div>
 </template>
 <script lang="js">
-import { defineComponent, reactive, ref, toRaw } from 'vue';
+import { defineComponent, reactive, toRaw } from 'vue';
 export default defineComponent({
   name: 'toRow-test',
   setup(){
@@ -16,9 +16,6 @@ export default defineComponent({
         name: 'zs',
         age: 18
     })
-
-    let stuAge= ref(18)
-    let rawStuAge= toRaw(stuAge)
     //响应式数据拆解，当通过ref或者reactive生成响应式数据的时候，修改数据不想引起UI的变化就可以调用toRaw这个API
     let rawStu= toRaw(stu);
     function changeStu() {
