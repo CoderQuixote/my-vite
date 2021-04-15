@@ -5,7 +5,7 @@
             <li v-for="item in userList" :key="item.id">{{item.name}}---{{item.id}}</li>
         </ul>
         <button @click="getNextPageData">下一页</button>
-    <div/>
+    </div>
 </template>
 <script lang="js">
 import { defineComponent, customRef} from 'vue';

@@ -9,10 +9,11 @@
   <!-- <shallowReactiveTest/> -->
   <!-- <toRawTest/> -->
   <!-- <markRawTest/> -->
-  <!-- <toRefTest/>
-  <toRefsTest/> -->
+  <!-- <toRefTest/> -->
+  <!--<toRefsTest/> -->
+  <customRefTest/>
   <!-- <watchEffectTest/> -->
-  <readonlyTest/>
+  <!-- <readonlyTest/> -->
 </template>
 
 <script>
@@ -28,6 +29,7 @@ import toRawTest from './components/toRaw-test.vue';
 import markRawTest from './components/markRaw-test.vue';
 import toRefTest from './components/toRef-test.vue';
 import toRefsTest from './components/toRefs-test.vue';
+import customRefTest from './components/customRef-test.vue';
 import watchEffectTest from './components/watchEffect-test.vue';
 import readonlyTest from './components/readonly-test.vue';
 
@@ -46,6 +48,7 @@ export default {
     markRawTest,
     toRefTest,
     toRefsTest,
+    customRefTest,
     watchEffectTest,
     readonlyTest
   }
